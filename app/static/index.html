@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bank Assistant</title>
+<style>
+  :root { --bg:#f4f6fb; --card:#fff; --ink:#1d2433; --muted:#6b7385; --brand:#0b5cad; --me:#0b5cad; --bot:#eef2f8; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg:#10141c; --card:#171c26; --ink:#e6e9f0; --muted:#9aa3b5; --brand:#4d9bf0; --me:#2a6fc0; --bot:#222a38; }
+  }
+  * { box-sizing: border-box; }
+  body { margin:0; font:15px/1.5 system-ui, sans-serif; background:var(--bg); color:var(--ink); }
+  .wrap { max-width:760px; margin:0 auto; height:100dvh; display:flex; flex-direction:column; padding:16px; }
+  header { font-weight:600; font-size:18px; padding:8px 0 12px; }
+  header small { display:block; font-weight:400; color:var(--muted); font-size:13px; }
+  #log { flex:1; overflow-y:auto; background:var(--card); border-radius:12px; padding:16px; display:flex; flex-direction:column; gap:10px; }
+  .msg { max-width:85%; padding:10px 14px; border-radius:14px; white-space:pre-wrap; word-wrap:break-word; }
+  .user { align-self:flex-end; background:var(--me); color:#fff; border-bottom-right-radius:4px; }
+  .assistant { align-self:flex-start; background:var(--bot); border-bottom-left-radius:4px; }
+  .tag { font-size:12px; color:var(--muted); align-self:flex-start; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0; }
+  .chips button { border:1px solid var(--brand); background:transparent; color:var(--brand); border-radius:999px; padding:6px 12px; cursor:pointer; font:inherit; font-size:13px; }
+  form { display:flex; gap:8px; }
+  input { flex:1; padding:12px; border-radius:10px; border:1px solid var(--muted); background:var(--card); color:var(--ink); font:inherit; }
+  form button { padding:0 18px; border:0; border-radius:10px; background:var(--brand); color:#fff; font:inherit; cursor:pointer; }
+  button:disabled { opacity:.5; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>Asha · Bank Assistant<small>Accounts, forms, gold / home / personal loans. Never share your OTP, PIN or password.</small></header>
+  <div id="log"><div class="msg assistant">Hi! I'm Asha 👋 How can I help you today?</div></div>
+  <div class="chips">
+    <button>How do I open a new account?</button>
+    <button>Tell me about gold loans</button>
+    <button>Am I eligible for a home loan?</button>
+    <button>Help me fill a personal loan form</button>
+    <button>Check my application status</button>
+  </div>
+  <form id="f"><input id="q" placeholder="Type your question…" autocomplete="off"><button>Send</button></form>
+</div>
+<script>
+  const log = document.getElementById('log'), q = document.getElementById('q'), f = document.getElementById('f');
+  let sessionId = null;
+  try { sessionId = sessionStorage.getItem('sid'); } catch {}
+  const add = (cls, text) => { const d = document.createElement('div'); d.className = cls; d.textContent = text; log.appendChild(d); log.scrollTop = log.scrollHeight; return d; };
+  async function send(text) {
+    if (!text.trim()) return;
+    add('msg user', text); q.value = '';
+    const btn = f.querySelector('button'); btn.disabled = true;
+    const typing = add('tag', 'Asha is typing…');
+    try {
+      const r = await fetch('/chat', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ message:text, session_id:sessionId }) });
+      const data = await r.json();
+      typing.remove();
+      if (!r.ok) { add('msg assistant', 'Sorry, something went wrong: ' + (data.detail || r.status)); return; }
+      sessionId = data.session_id; try { sessionStorage.setItem('sid', sessionId); } catch {}
+      add('msg assistant', data.reply);
+    } catch (e) { typing.remove(); add('msg assistant', 'Network error, please try again.'); }
+    finally { btn.disabled = false; q.focus(); }
+  }
+  f.onsubmit = e => { e.preventDefault(); send(q.value); };
+  document.querySelectorAll('.chips button').forEach(b => b.onclick = () => send(b.textContent));
+</script>
+</body>
+</html>

@@ -1,0 +1,6 @@
+fastapi
+uvicorn[standard]
+sqlalchemy
+anthropic>=1.8
+pydantic
+python-dotenv
